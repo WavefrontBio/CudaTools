@@ -949,12 +949,11 @@ namespace WPFTools
                             foreach (int value in Enum.GetValues(typeof(SIGNAL_TYPE)))
                             {
                                 SIGNAL_TYPE signal = (SIGNAL_TYPE)value;
-                                charts[signal].Reset();                              
-                            }
+                                charts[signal].Reset();
 
-                         
-                            charts[visibleSignal].Redraw();
-                            charts[visibleSignal].RedrawAggregate();
+                                charts[signal].Redraw();
+                                charts[signal].RedrawAggregate();
+                            }
                           
 
                             WriteableBitmap bitmapRef2 = vm.bitmap;

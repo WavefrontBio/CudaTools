@@ -23,6 +23,8 @@ namespace CudaTools
 
         int[] m_dummyData;
         int m_dummyDataSize;
+
+        long m_duration;
         
         public MainWindow()
         {
@@ -31,8 +33,10 @@ namespace CudaTools
             m_vm = new MainWindow_ViewModel();
             DataContext = m_vm;
 
-            ChartArray.Init(16, 24, 1, 2, 10000);  // NOTE: allocate for expected max number of points
-                                                    // ~ 120 Megabytes of GPU memory required for every 10,000 points
+            ChartArray.Init(8, 12, 1, 2, 10000);  // NOTE: allocate for expected max number of points
+                                                   // ~ 120 Megabytes of GPU memory required for every 10,000 points
+
+            m_duration = 0;
 
             m_dummyDataSize = 15000;
             m_dummyData = new int[m_dummyDataSize];
@@ -107,13 +111,13 @@ namespace CudaTools
             }
 
    
-            long t = sw.ElapsedMilliseconds;
+            m_duration = sw.ElapsedMilliseconds;
             
             //Debug.Print("total time = " + sw.ElapsedMilliseconds.ToString() + "   for  " + count.ToString() + "  Points");
 
             Dispatcher.BeginInvoke(new Action(() =>
             {
-                InfoText.Text = t.ToString() + "/" + ChartArray.m_totalPoints.ToString();
+                InfoText.Text = m_duration.ToString() + "/" + ChartArray.m_totalPoints.ToString();
                 ResetPB.IsEnabled = true;
             }), DispatcherPriority.Background);
         }
@@ -129,7 +133,7 @@ namespace CudaTools
             m_sw = new Stopwatch();
             m_sw.Start();
 
-            Task task = Task.Run(() => BackgroundTask(1000, 7));            
+            Task task = Task.Run(() => BackgroundTask(1000, 2));            
         }
 
         private void ResetPB_Click(object sender, RoutedEventArgs e)
@@ -147,13 +151,13 @@ namespace CudaTools
         {
             //Task.Run(() => TestRoutine());
 
-            //ChartArray.Refresh();   
+            ChartArray.Refresh();
             //ChartArray.Resize();
 
             //int w = 0, h = 0;
             //ChartArray.GetBestBitmapSize(ref w, ref h);
 
-            //InfoText.Text = w.ToString() + ", " + h.ToString();
+            InfoText.Text = m_duration.ToString() + "/" + ChartArray.m_totalPoints.ToString();
         }
 
 
