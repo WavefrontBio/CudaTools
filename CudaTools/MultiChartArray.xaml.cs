@@ -684,7 +684,7 @@ namespace WPFTools
             // post a resize action to the chart data pipeline
             int[] x = new int[2] { (int)imageBitmap.ActualWidth*2, (int)AggregateImage.ActualWidth*2 };
             int[] y = new int[2] { (int)imageBitmap.ActualHeight*2, (int)AggregateImage.ActualHeight*2 };
-            //m_chartDataPipeline.Post(Tuple.Create<int[], int[], SIGNAL_TYPE, int, COMMAND_TYPE>(x, y, SIGNAL_TYPE.RAW, 0, COMMAND_TYPE.RESIZE));
+            m_guiPipeline.Post(Tuple.Create<int[], int[], SIGNAL_TYPE, int, COMMAND_TYPE>(x, y, SIGNAL_TYPE.RAW, 0, COMMAND_TYPE.RESIZE));
         }
 
         private void M_refreshTimer_Tick(object sender, EventArgs e)
@@ -788,7 +788,7 @@ namespace WPFTools
 
             //// update the range labels
             //UpdateAggregateRange();
-
+   
             m_guiPipeline.Post(Tuple.Create<int[], int[], SIGNAL_TYPE, int, COMMAND_TYPE>(null, null, m_visibleSignal, 0, COMMAND_TYPE.REFRESH));
 
         }
@@ -911,6 +911,17 @@ namespace WPFTools
                                     charts[signal].Resize(w, h, x[1], y[1]);
                                 }
                             }
+
+                            // refresh chart array
+                            charts[visibleSignal].Redraw();
+                            WriteableBitmap bitmapRef4 = vm.bitmap;
+                            charts[visibleSignal].Refresh(ref bitmapRef4);
+
+                            // refresh aggregate chart
+                            charts[visibleSignal].RedrawAggregate();
+                            WriteableBitmap aggregateBitmapRef4 = vm.aggregateBitmap;
+                            charts[visibleSignal].RefreshAggregate(ref aggregateBitmapRef4);
+                            
                             break;
 
                         case COMMAND_TYPE.REFRESH:
@@ -974,6 +985,9 @@ namespace WPFTools
                             {
                                 SIGNAL_TYPE signal = (SIGNAL_TYPE)value;
 
+                                // refresh chart array
+                                charts[signal].Redraw();
+
                                 if (signal == visibleSignal)
                                 {
                                     WriteableBitmap bitmapRef3 = vm.bitmap;
@@ -983,11 +997,19 @@ namespace WPFTools
                                 {
                                     charts[signal].SetSelectedCharts(temp);
                                 }
+
+                                // refresh aggregate chart
+                                charts[signal].RedrawAggregate();
+
+                                if (signal == visibleSignal)
+                                {                            
+                                    WriteableBitmap aggregateBitmapRef3 = vm.aggregateBitmap;
+                                    charts[visibleSignal].RefreshAggregate(ref aggregateBitmapRef3);
+                                }
+                                
                             }
 
-                            WriteableBitmap aggregateBitmapRef3 = vm.aggregateBitmap;
-                            charts[visibleSignal].RedrawAggregate();
-                            charts[visibleSignal].RefreshAggregate(ref aggregateBitmapRef3);
+                            
 
                             break;
                     }
