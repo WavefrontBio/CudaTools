@@ -33,7 +33,7 @@ namespace CudaTools
             m_vm = new MainWindow_ViewModel();
             DataContext = m_vm;
 
-            ChartArray.Init(16, 24, 1, 2, 10000, 2);  // NOTE: allocate for expected max number of points
+            ChartArray.Init(16, 24, 1, 2, 10000, 1);  // NOTE: allocate for expected max number of points
                                                       // ~ 120 Megabytes/trace of GPU memory required for every 10,000 points
 
             m_duration = 0;
@@ -149,7 +149,7 @@ namespace CudaTools
             m_sw = new Stopwatch();
             m_sw.Start();
 
-            Task task = Task.Run(() => BackgroundTask(1000, 2));            
+            Task task = Task.Run(() => BackgroundTask(1000, 5));            
         }
 
         private void ResetPB_Click(object sender, RoutedEventArgs e)

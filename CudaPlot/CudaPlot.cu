@@ -12,6 +12,7 @@ CudaChartArray::CudaChartArray(int rows, int cols,
 	int2 xRange, int2 yRange, int maxNumDataPoints, int numTraces)
 {
 	m_threadsPerBlock = 32;
+	if (numTraces > MAX_TRACES) numTraces = MAX_TRACES;
 
 	m_rows = rows;
 	m_cols = cols;
@@ -645,6 +646,11 @@ __global__ void plotAggregateChart(int2* data, uchar4* output, int numPoints, in
 //////////////////////////////////////////////////////////////////////////////////////////////
 
 
+int CudaChartArray::GetMaxNumberOfTraces()
+{
+	return MAX_TRACES;
+}
+
 int2 CudaChartArray::GetChartArrayPixelSize()
 {
 	return make_int2(m_chartArray_width, m_chartArray_height);
@@ -808,13 +814,6 @@ void CudaChartArray::AppendData(int2 *p_new_points, int traceNum)
 		if (rangeChanged)
 		{
 			CalcConversionFactors();
-			Redraw();
-			RedrawAggregate();
-		}
-		else
-		{			
-			AppendLine();
-			AppendLineAggregate();
 		}
 	}
 	else

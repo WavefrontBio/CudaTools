@@ -202,6 +202,31 @@ namespace CudaPlotNet
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+        [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl, EntryPoint = "GetMaxNumberOfTraces")]
+        //   int GetMaxNumberOfTraces(CudaChartArray* pChartArray)
+        static extern int ChartArray_GetMaxNumberOfTraces(IntPtr pChartArray);
+
+        public int GetMaxNumberOfTraces()
+        {
+            try
+            {
+                return ChartArray_GetMaxNumberOfTraces(chartArray);
+            }
+            catch (Exception ex)
+            {               
+                MessageBox.Show("Error: " + ex.Message, "Marshaling Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return 0;
+            }
+        }
+
+
+       
+
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
         [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl, EntryPoint = "GetSelectionArrayPtr")]
         // void* GetSelectionArrayPtr(CudaChartArray* pChartArray)
         static extern IntPtr ChartArray_GetSelectionArrayPtr(IntPtr pChartArray);

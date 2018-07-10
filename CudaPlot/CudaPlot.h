@@ -28,6 +28,7 @@ public:
 
 	int2 GetChartArrayPixelSize();
 
+	int GetMaxNumberOfTraces();
 	
 	bool AllocateForData(int numDataPoints);
 	bool AllocateForSelected();

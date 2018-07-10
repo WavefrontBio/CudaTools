@@ -67,6 +67,10 @@ DllExport void Shutdown(CudaChartArray* p_chart_array)
 }
 
 
+DllExport int GetMaxNumberOfTraces(CudaChartArray* pChartArray)
+{
+	return pChartArray->GetMaxNumberOfTraces();
+}
 
 
 DllExport int2 GetChartArrayPixelSize(CudaChartArray* pChartArray)

@@ -121,7 +121,7 @@ namespace WPFTools
 
 
         public void Init(int rows, int cols, int margin, int padding, int maxNumPoints, int numTraces)
-        {
+        {          
 
             m_vm = new MultiChartArray_ViewModel(rows, cols, padding, margin, maxNumPoints, numTraces);
             DataContext = m_vm;
@@ -160,15 +160,11 @@ namespace WPFTools
         }
         
         public void AppendData(int[] x, int[] y, SIGNAL_TYPE signal, int traceNum)
-        {
-           
+        {           
             // add data to chart array (the x array is superfluous since it contains all the same values, should just be an int, not int[])
             //m_chartArrays[signal].AppendData(x, y);
             m_dataPipeline.Post(Tuple.Create<int[], int[], SIGNAL_TYPE, int>(x, y, signal, traceNum));
             m_newDataAdded = true;
-
-            // only redraw the image on the screen every 100 milliseconds, otherwise it might consume too much of gui thread
-            //if (m_visibleSignal == signal) Refresh(); 
         }
 
 
@@ -179,31 +175,12 @@ namespace WPFTools
                 m_guiPipeline.Post(Tuple.Create<int[], int[], SIGNAL_TYPE, int, COMMAND_TYPE>(null, null, m_visibleSignal, 0, COMMAND_TYPE.REFRESH));
                 m_newDataAdded = false;
             }
-
-
-
-            //only redraw the image on the screen every 100 milliseconds, otherwise it might consume too much of gui thread
-            //Dispatcher.BeginInvoke(new Action(() =>
-            //{
-            //    // refresh chart array image
-            //    WriteableBitmap bitmapRef = m_vm.bitmap;
-            //    m_chartArrays[m_visibleSignal].Refresh(ref bitmapRef);
-
-            //    // refresh aggregate image
-            //    WriteableBitmap aggregateBitmapRef = m_vm.aggregateBitmap;
-            //    m_chartArrays[m_visibleSignal].RefreshAggregate(ref aggregateBitmapRef);
-
-            //    // update the range labels
-            //    UpdateAggregateRange();
-
-            //}), DispatcherPriority.Background);
         }
 
 
 
         public void UpdateAggregateRange()
         {
-
             m_chartArrays[m_visibleSignal].GetRanges(ref m_axisRange);
 
             Dispatcher.BeginInvoke(new Action(() =>
@@ -213,15 +190,6 @@ namespace WPFTools
                 m_vm.yMaxText = m_axisRange[3].ToString();
             }), DispatcherPriority.Background);
         }
-
-        //public IntPtr GetImagePtr(int signalIndex)
-        //{
-        //    SIGNAL_TYPE signal = (SIGNAL_TYPE)signalIndex;
-
-        //    IntPtr ptr = m_chartArrays[signal].GetImagePtr();
-
-        //    return ptr;
-        //}
 
         public int NumRows()
         {
@@ -259,6 +227,9 @@ namespace WPFTools
                 m_chartArrays[signal].Redraw();
                 m_chartArrays[signal].RedrawAggregate();
             }
+
+            int maxTraces = m_chartArrays[SIGNAL_TYPE.RAW].GetMaxNumberOfTraces();
+            if (m_vm.numTraces > maxTraces) m_vm.numTraces = maxTraces;
 
             WriteableBitmap bmap = m_vm.bitmap;
             m_chartArrays[m_visibleSignal].Refresh(ref bmap);
@@ -315,6 +286,13 @@ namespace WPFTools
 
             SolidColorBrush brush = new SolidColorBrush(m_buttonColorNotSelected);
 
+            double fontSize;
+            if (m_vm.cols < 32)
+                fontSize = 10;
+            else
+                fontSize = 6;
+            
+
             for (int i = 0; i < m_vm.cols; i++)
             {
                 ColumnDefinition colDef = new ColumnDefinition();
@@ -324,7 +302,12 @@ namespace WPFTools
                 tag.type = "C";
                 tag.position = i;
                 button.Tag = tag;
-                button.Content = (i + 1).ToString();
+               
+                TextBlock tb = new TextBlock();
+                tb.FontSize = fontSize;               
+                tb.Text = (i + 1).ToString();
+                button.Content = tb;
+               
                 button.Click += button_Click;
                 ColumnButtonGrid.Children.Add(button);
                 Grid.SetColumn(button, i);
@@ -358,7 +341,11 @@ namespace WPFTools
                     text = "A" + character.ToString();
                 }
 
-                button.Content = text;
+                TextBlock tb = new TextBlock();
+                tb.FontSize = fontSize;
+                tb.Text = text;
+                button.Content = tb;
+
                 button.Click += button_Click;
 
                 RowButtonGrid.Children.Add(button);
@@ -927,10 +914,12 @@ namespace WPFTools
                             visibleSignal = signalType;
 
                             // refresh chart array image
+                            charts[visibleSignal].Redraw();
                             WriteableBitmap bitmapRef1 = vm.bitmap;
                             charts[visibleSignal].Refresh(ref bitmapRef1);
 
                             // refresh aggregate image
+                            charts[visibleSignal].RedrawAggregate();
                             WriteableBitmap aggregateBitmapRef1 = vm.aggregateBitmap;
                             charts[visibleSignal].RefreshAggregate(ref aggregateBitmapRef1);
 
