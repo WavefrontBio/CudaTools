@@ -120,10 +120,10 @@ namespace WPFTools
         }
 
 
-        public void Init(int rows, int cols, int margin, int padding, int maxNumPoints)
+        public void Init(int rows, int cols, int margin, int padding, int maxNumPoints, int numTraces)
         {
 
-            m_vm = new MultiChartArray_ViewModel(rows, cols, padding, margin, maxNumPoints);
+            m_vm = new MultiChartArray_ViewModel(rows, cols, padding, margin, maxNumPoints, numTraces);
             DataContext = m_vm;
 
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -159,13 +159,12 @@ namespace WPFTools
             
         }
         
-        public void AppendData(int[] x, int[] y, int signalIndex)
+        public void AppendData(int[] x, int[] y, SIGNAL_TYPE signal, int traceNum)
         {
-            SIGNAL_TYPE signal = (SIGNAL_TYPE)signalIndex;
-
+           
             // add data to chart array (the x array is superfluous since it contains all the same values, should just be an int, not int[])
             //m_chartArrays[signal].AppendData(x, y);
-            m_dataPipeline.Post(Tuple.Create<int[], int[], SIGNAL_TYPE, int>(x, y, signal, 0));
+            m_dataPipeline.Post(Tuple.Create<int[], int[], SIGNAL_TYPE, int>(x, y, signal, traceNum));
             m_newDataAdded = true;
 
             // only redraw the image on the screen every 100 milliseconds, otherwise it might consume too much of gui thread
@@ -256,7 +255,7 @@ namespace WPFTools
                        m_vm.aggregateWidth, m_vm.aggregateHeight,
                        Colors.DarkBlue, Colors.Black, Color.FromArgb(255, 85, 85, 85), Colors.Black, Colors.White,
                        m_chartTraceColor[signal],
-                       0, initialXmax, 0, initialYmax, m_vm.maxPoints);
+                       0, initialXmax, 0, initialYmax, m_vm.maxPoints, m_vm.numTraces);
                 m_chartArrays[signal].Redraw();
                 m_chartArrays[signal].RedrawAggregate();
             }
@@ -827,7 +826,7 @@ namespace WPFTools
                 try
                 {
                     if(signalType == SIGNAL_TYPE.RAW) m_totalPoints++;
-                    charts[signalType].AppendData(x, y);                   
+                    charts[signalType].AppendData(x, y, indicatorNdx);                   
                 }
                 catch (OperationCanceledException)
                 {
@@ -1055,6 +1054,13 @@ namespace WPFTools
                 set { _cols = value; OnPropertyChanged(new PropertyChangedEventArgs("_cols")); }
             }
 
+            private int _numTraces;
+            public int numTraces
+            {
+                get { return _numTraces; }
+                set { _numTraces = value; OnPropertyChanged(new PropertyChangedEventArgs("numTraces")); }
+            }
+
             private int _maxPoints;
             public int maxPoints
             {
@@ -1230,7 +1236,7 @@ namespace WPFTools
             }
 
 
-            public MultiChartArray_ViewModel(int Rows, int Cols, int Padding, int Margin, int MaxPoints)
+            public MultiChartArray_ViewModel(int Rows, int Cols, int Padding, int Margin, int MaxPoints, int NumTraces)
             {
                 chartArrayWidth = 0;
                 chartArrayHeight = 0;
@@ -1240,6 +1246,7 @@ namespace WPFTools
                 padding = Padding;
                 margin = Margin;
                 maxPoints = MaxPoints;
+                numTraces = NumTraces;
 
                 int pixelsPerChart = 42;
 

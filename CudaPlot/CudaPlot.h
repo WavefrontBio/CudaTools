@@ -12,6 +12,8 @@
 
 #include "CudaUtility.h"
 
+#define MAX_TRACES 4
+
 class CudaChartArray
 {
 public:
@@ -20,7 +22,7 @@ public:
 		int aggregateWidth, int aggregateHeight,
 		uchar4 windowBackgroundColor, uchar4 chartBackgroundColor, uchar4 chartSelectedColor,
 		uchar4 chartFrameColor, uchar4 chartAxisColor, uchar4 chartPlotColor,
-		int2 xRange, int2 yRange, int maxNumDataPoints);
+		int2 xRange, int2 yRange, int maxNumDataPoints, int numTraces);
 
 	~CudaChartArray();
 
@@ -36,7 +38,7 @@ public:
 	void SetPlotColor(uchar4 color);
 	void CalcConversionFactors();
 
-	void AppendData(int2 *p_new_points);
+	void AppendData(int2 *p_new_points, int traceNum);
 
 	void Redraw();
 	void AppendLine(); // just draw connect the last two points
@@ -89,10 +91,12 @@ public:
 	int32_t m_padding;
 
 	// pointers to data block where the plotted data is stored
-	int2 *mp_d_data;  // device pointer to data block
+	int2* mp_d_data[MAX_TRACES];  // device pointer to data block
+	int m_numTraces;  // number of traces that have been set up
+	bool m_traceVisible[MAX_TRACES];  // flag array indicating which traces are visible
 
 
-					  // pointer to the image of the chart array
+    // pointer to the image of the chart array
 	uchar4 *mp_h_chart_image; // host pointer 
 	uchar4 *mp_d_chart_image; // device pointer
 	size_t m_chart_image_pitch;
@@ -111,7 +115,7 @@ public:
 	bool  *mp_h_chart_selected; // host pointer
 
 
-	int32_t  m_num_data_points;  // number of data points currently in memory
+	int32_t  m_num_data_points[MAX_TRACES];  // number of data points currently in memory
 	int32_t  m_max_num_data_points;  // max number of data points possible with current memory allocation.
 									 // if this number is reached, a larger memory block can be allocated.
 

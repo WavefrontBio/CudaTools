@@ -38,7 +38,7 @@ DllExport bool InitCudaPlot(int chartRows, int chartCols, int chartArrayWidth, i
 	int margin, int padding, int aggregateWidth, int aggregateHeight,
 	uint32_t windowBkgColor,
 	uint32_t chartBkgColor, uint32_t chartSelectedColor, uint32_t chartFrameColor, uint32_t chartAxisColor, uint32_t chartPlotColor,
-	int xmin, int xmax, int ymin, int ymax,	int maxNumDataPoints, CudaChartArray** pp_chartArray)
+	int xmin, int xmax, int ymin, int ymax,	int maxNumDataPoints, int numTraces, CudaChartArray** pp_chartArray)
 {
 	bool ready = true;
 
@@ -54,7 +54,7 @@ DllExport bool InitCudaPlot(int chartRows, int chartCols, int chartArrayWidth, i
 
 	*pp_chartArray = new CudaChartArray(chartRows, chartCols, chartArrayWidth, chartArrayHeight, margin, padding,
 									aggregateWidth, aggregateHeight,
-									col1,col2,col3,col4,col5,col6, xRange, yRange, maxNumDataPoints);
+									col1,col2,col3,col4,col5,col6, xRange, yRange, maxNumDataPoints, numTraces);
 
 	return ready;
 }
@@ -99,7 +99,7 @@ DllExport void SetPlotColor(CudaChartArray* pChartArray, uint32_t color)
 }
 
 
-DllExport void AppendData(CudaChartArray* pChartArray, int* xArray, int* yArray, int numPoints)
+DllExport void AppendData(CudaChartArray* pChartArray, int* xArray, int* yArray, int numPoints, int traceNum)
 {	
 	int2* newPoints = (int2*)malloc(numPoints * sizeof(int2));
 
@@ -109,7 +109,7 @@ DllExport void AppendData(CudaChartArray* pChartArray, int* xArray, int* yArray,
 		newPoints[i].y = yArray[i];
 	}
 
-	pChartArray->AppendData(newPoints);
+	pChartArray->AppendData(newPoints, traceNum);
 
 	free(newPoints);
 }

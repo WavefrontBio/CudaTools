@@ -9,7 +9,7 @@ CudaChartArray::CudaChartArray(int rows, int cols,
 	int aggregateWidth, int aggregateHeight,
 	uchar4 windowBackgroundColor, uchar4 chartBackgroundColor, uchar4 chartSelectedColor,
 	uchar4 chartFrameColor, uchar4 chartAxisColor, uchar4 chartPlotColor,
-	int2 xRange, int2 yRange, int maxNumDataPoints)
+	int2 xRange, int2 yRange, int maxNumDataPoints, int numTraces)
 {
 	m_threadsPerBlock = 32;
 
@@ -17,6 +17,7 @@ CudaChartArray::CudaChartArray(int rows, int cols,
 	m_cols = cols;
 	m_chartArray_width = chartArrayWidth;
 	m_chartArray_height = chartArrayHeight;
+	m_numTraces = numTraces;
 
 	m_aggregate_width = aggregateWidth;
 	m_aggregate_height = aggregateHeight;
@@ -45,7 +46,8 @@ CudaChartArray::CudaChartArray(int rows, int cols,
 	m_initial_yRange.y = m_y_max;
 
 	m_max_num_data_points = maxNumDataPoints;
-	m_num_data_points = 0;
+	for(int i = 0; i<m_numTraces; i++)
+		m_num_data_points[i] = 0;
 
 	bool success;
 	success = AllocateForData(maxNumDataPoints);
@@ -65,7 +67,11 @@ CudaChartArray::CudaChartArray(int rows, int cols,
 
 CudaChartArray::~CudaChartArray()
 {	
-	cudaFree(mp_d_data);
+	for (int i = 0; i < m_numTraces; i++)
+	{
+		cudaFree(mp_d_data[i]);
+	}
+
 	cudaFree(mp_d_chart_selected);
 	cudaFree(mp_d_chart_image);
 	cudaFree(mp_d_aggregate_image);
@@ -663,13 +669,19 @@ bool CudaChartArray::AllocateForData(int numDataPoints)
 
 	size_t size = blocksize * m_max_num_data_points; // size of memory allocated for data points
 
-	bool success = true;  
+	bool success = true;
 
-	cudaError_t result = cudaMalloc((void**)&mp_d_data, size);
-	if (result != CUDA_SUCCESS)
+	for (int i = 0; i < m_numTraces; i++)
 	{
-		printf(LOG_CUDA "failed to allocated %zu bytes for data block\n", size);
-		success = false;
+		cudaError_t result = cudaMalloc((void**)&mp_d_data[i], size);
+		if (result != CUDA_SUCCESS)
+		{
+			printf(LOG_CUDA "failed to allocated %zu bytes for data block\n", size);
+			success = false;
+			m_traceVisible[i] = false;
+			break;
+		}
+		m_traceVisible[i] = true;
 	}
 
 	return success;
@@ -770,11 +782,13 @@ void CudaChartArray::CalcConversionFactors()
 
 }
 
-void CudaChartArray::AppendData(int2 *p_new_points)
+void CudaChartArray::AppendData(int2 *p_new_points, int traceNum)
 {
 	bool rangeChanged = false;
 
-	uint8_t* ptr = (uint8_t*)mp_d_data + (m_num_data_points * m_rows * m_cols * sizeof(int2));
+	if (traceNum > m_numTraces - 1 || traceNum < 0) return;
+
+	uint8_t* ptr = (uint8_t*)mp_d_data[traceNum] + (m_num_data_points[traceNum] * m_rows * m_cols * sizeof(int2));
 
 
 	cudaError_t result = cudaMemcpy(ptr, (void*)p_new_points, m_rows * m_cols * sizeof(int2), cudaMemcpyHostToDevice);
@@ -789,7 +803,7 @@ void CudaChartArray::AppendData(int2 *p_new_points)
 			if (p_new_points[i].y < m_y_min) { m_y_min = p_new_points[i].y; rangeChanged = true; }
 		}
 
-		m_num_data_points++;
+		m_num_data_points[traceNum]++;
 
 		if (rangeChanged)
 		{
@@ -829,10 +843,13 @@ void CudaChartArray::Redraw()
 	dim3 numBlocks1(m_cols, m_rows);  // grid dims
 
 	// redraw chart
-	plotChart << <numBlocks1, threadsPerBlock1 >> > (mp_d_data, mp_d_chart_image, m_num_data_points, m_max_num_data_points, m_x_value_to_pixel, m_y_value_to_pixel,
-		m_chart_width, m_chart_height, m_chart_image_pitch,
-		m_x_min, m_x_max, m_y_min, m_y_max,
-		m_chart_plot_color, m_margin, m_padding);
+	for (int i = 0; i < m_numTraces; i++)
+	{
+		plotChart << <numBlocks1, threadsPerBlock1 >> > (mp_d_data[i], mp_d_chart_image, m_num_data_points[i], m_max_num_data_points, m_x_value_to_pixel, m_y_value_to_pixel,
+			m_chart_width, m_chart_height, m_chart_image_pitch,
+			m_x_min, m_x_max, m_y_min, m_y_max,
+			m_chart_plot_color, m_margin, m_padding);
+	}
 
 	// copy full chart array image to host
 	cudaMemcpy2D(mp_h_chart_image, m_cols * sizeof(uchar4), mp_d_chart_image, m_chart_image_pitch, m_cols * sizeof(uchar4), m_rows, 
@@ -852,10 +869,13 @@ void CudaChartArray::AppendLine()
 	// a block threads per character to render
 	// a grid containing one block for each letter
 
-	plotChart << <grid, block>> > (mp_d_data, mp_d_chart_image, m_num_data_points, m_max_num_data_points, m_x_value_to_pixel, m_y_value_to_pixel,
-		m_chart_width, m_chart_height, m_chart_image_pitch,
-		m_x_min, m_x_max, m_y_min, m_y_max,
-		m_chart_plot_color, m_margin, m_padding);
+	for (int i = 0; i < m_numTraces; i++)
+	{
+		plotChart << <grid, block >> > (mp_d_data[i], mp_d_chart_image, m_num_data_points[i], m_max_num_data_points, m_x_value_to_pixel, m_y_value_to_pixel,
+			m_chart_width, m_chart_height, m_chart_image_pitch,
+			m_x_min, m_x_max, m_y_min, m_y_max,
+			m_chart_plot_color, m_margin, m_padding);
+	}
 
 	// copy full chart array image to host
 	cudaMemcpy2D(mp_h_chart_image, m_cols * sizeof(uchar4), mp_d_chart_image, m_chart_image_pitch, m_cols * sizeof(uchar4), m_rows, 
@@ -960,11 +980,14 @@ void CudaChartArray::RedrawAggregate()
 	
 
 	// redraw chart
-	plotAggregateChart << <numBlocks1, threadsPerBlock1 >> > (mp_d_data, mp_d_aggregate_image, m_num_data_points, m_max_num_data_points, 
-		m_x_value_to_pixel_aggregate, m_y_value_to_pixel_aggregate,
-		m_aggregate_width, m_aggregate_height, m_aggregate_image_pitch,
-		m_x_min, m_x_max, m_y_min, m_y_max,
-		m_chart_plot_color, m_margin, mp_d_chart_selected);
+	for (int i = 0; i < m_numTraces; i++)
+	{
+		plotAggregateChart << <numBlocks1, threadsPerBlock1 >> > (mp_d_data[i], mp_d_aggregate_image, m_num_data_points[i], m_max_num_data_points,
+			m_x_value_to_pixel_aggregate, m_y_value_to_pixel_aggregate,
+			m_aggregate_width, m_aggregate_height, m_aggregate_image_pitch,
+			m_x_min, m_x_max, m_y_min, m_y_max,
+			m_chart_plot_color, m_margin, mp_d_chart_selected);
+	}
 
 	// copy full aggregate image to host
 	cudaMemcpy2D(mp_h_aggregate_image, m_cols * sizeof(uchar4), mp_d_aggregate_image, m_aggregate_image_pitch, m_cols * sizeof(uchar4), m_rows, 
@@ -981,13 +1004,15 @@ void CudaChartArray::AppendLineAggregate()
 	dim3 threadsPerBlock1(m_threadsPerBlock, 1);  // block dims
 	dim3 numBlocks1(m_cols, m_rows);  // grid dims
 
-
-									  // redraw chart
-	plotAggregateChart << <numBlocks1, threadsPerBlock1 >> > (mp_d_data, mp_d_aggregate_image, m_num_data_points, m_max_num_data_points,
-		m_x_value_to_pixel_aggregate, m_y_value_to_pixel_aggregate,
-		m_aggregate_width, m_aggregate_height, m_aggregate_image_pitch,
-		m_x_min, m_x_max, m_y_min, m_y_max,
-		m_chart_plot_color, m_margin, mp_d_chart_selected);
+	for (int i = 0; i < m_numTraces; i++)
+	{
+		// redraw chart
+		plotAggregateChart << <numBlocks1, threadsPerBlock1 >> > (mp_d_data[i], mp_d_aggregate_image, m_num_data_points[i], m_max_num_data_points,
+			m_x_value_to_pixel_aggregate, m_y_value_to_pixel_aggregate,
+			m_aggregate_width, m_aggregate_height, m_aggregate_image_pitch,
+			m_x_min, m_x_max, m_y_min, m_y_max,
+			m_chart_plot_color, m_margin, mp_d_chart_selected);
+	}
 
 	// copy full aggregate image to host
 	cudaMemcpy2D(mp_h_aggregate_image, m_cols * sizeof(uchar4), mp_d_aggregate_image, m_aggregate_image_pitch, 
@@ -1056,7 +1081,10 @@ void CudaChartArray::Resize(int chartArrayWidth, int chartArrayHeight, int aggre
 
 void CudaChartArray::Reset()
 {
-	m_num_data_points = 0;
+	for (int i = 0; i < m_numTraces; i++)
+	{
+		m_num_data_points[i] = 0;
+	}
 
 	m_x_min = m_initial_xRange.x;
 	m_x_max = m_initial_xRange.y;

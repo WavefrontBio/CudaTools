@@ -33,8 +33,8 @@ namespace CudaTools
             m_vm = new MainWindow_ViewModel();
             DataContext = m_vm;
 
-            ChartArray.Init(8, 12, 1, 2, 10000);  // NOTE: allocate for expected max number of points
-                                                   // ~ 120 Megabytes of GPU memory required for every 10,000 points
+            ChartArray.Init(16, 24, 1, 2, 10000, 2);  // NOTE: allocate for expected max number of points
+                                                      // ~ 120 Megabytes/trace of GPU memory required for every 10,000 points
 
             m_duration = 0;
 
@@ -62,22 +62,22 @@ namespace CudaTools
             int num = 0;
             long[] intervals = new long[count];
             long last = 0;
+            bool flip = false;
 
             TimeSpan delayTime = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond / 2);
 
             int[] x = new int[ChartArray.NumRows() * ChartArray.NumCols()];
-            int[] y1 = new int[ChartArray.NumRows() * ChartArray.NumCols()];
 
+            int[] y1 = new int[ChartArray.NumRows() * ChartArray.NumCols()];
             int[] y2 = new int[ChartArray.NumRows() * ChartArray.NumCols()];
             int[] y3 = new int[ChartArray.NumRows() * ChartArray.NumCols()];
             int[] y4 = new int[ChartArray.NumRows() * ChartArray.NumCols()];
 
-            //IntPtr ptr = ChartArray.GetImagePtr(0);
-            //ptr = ChartArray.GetImagePtr(1);
-            //ptr = ChartArray.GetImagePtr(2);
-            //ptr = ChartArray.GetImagePtr(3);
+            int[] y5 = new int[ChartArray.NumRows() * ChartArray.NumCols()];
+            int[] y6 = new int[ChartArray.NumRows() * ChartArray.NumCols()];
+            int[] y7 = new int[ChartArray.NumRows() * ChartArray.NumCols()];
+            int[] y8 = new int[ChartArray.NumRows() * ChartArray.NumCols()];
 
-            
 
             Stopwatch sw = new Stopwatch();
             sw.Start();
@@ -94,18 +94,34 @@ namespace CudaTools
                 for (int i = 0; i < ChartArray.NumRows() * ChartArray.NumCols(); i++)
                 {
                     x[i] = m_x;
-                    y1[i] = m_dummyData[num+i]; // m_y;
+
+                    y1[i] = m_dummyData[num+i];
                     y2[i] = 2*m_dummyData[num+i+50];
                     y3[i] = 3*m_dummyData[num+i+75];
                     y4[i] = 4*m_dummyData[num+i+200];
+
+                    y5[i] = m_dummyData[num + i + 300];
+                    y6[i] = 2 * m_dummyData[num + i + 450];
+                    y7[i] = 3 * m_dummyData[num + i + 675];
+                    y8[i] = 4 * m_dummyData[num + i + 600];
                 }
-                ChartArray.AppendData(x, y1, 0);
-                ChartArray.AppendData(x, y2, 1);
-                ChartArray.AppendData(x, y3, 2);
-                ChartArray.AppendData(x, y4, 3);
 
-                
+                if (flip)
+                {
+                    ChartArray.AppendData(x, y1, WPFTools.MultiChartArray.SIGNAL_TYPE.RAW, 0);
+                    ChartArray.AppendData(x, y2, WPFTools.MultiChartArray.SIGNAL_TYPE.CONTROL_SUBTRACTION, 0);
+                    ChartArray.AppendData(x, y3, WPFTools.MultiChartArray.SIGNAL_TYPE.STATIC_RATIO, 0);
+                    ChartArray.AppendData(x, y4, WPFTools.MultiChartArray.SIGNAL_TYPE.DYNAMIC_RATIO, 0);
+                }
+                else
+                {
+                    ChartArray.AppendData(x, y5, WPFTools.MultiChartArray.SIGNAL_TYPE.RAW, 1);
+                    ChartArray.AppendData(x, y6, WPFTools.MultiChartArray.SIGNAL_TYPE.CONTROL_SUBTRACTION, 1);
+                    ChartArray.AppendData(x, y7, WPFTools.MultiChartArray.SIGNAL_TYPE.STATIC_RATIO, 1);
+                    ChartArray.AppendData(x, y8, WPFTools.MultiChartArray.SIGNAL_TYPE.DYNAMIC_RATIO, 1);
+                }
 
+                flip = !flip;
                 m_x++;
                 m_y = m_x;
             }

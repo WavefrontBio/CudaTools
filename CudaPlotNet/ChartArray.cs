@@ -87,11 +87,11 @@ namespace CudaPlotNet
         //int margin, int padding, int aggregateWidth, int aggregateHeight,
         //uint32_t windowBkgColor,
         //uint32_t chartBkgColor, uint32_t chartSelectedColor, uint32_t chartFrameColor, uint32_t chartAxisColor, uint32_t chartPlotColor,
-        //int xmin, int xmax, int ymin, int ymax, int maxNumDataPoints, CudaChartArray** pp_chartArray)
+        //int xmin, int xmax, int ymin, int ymax, int maxNumDataPoints, int numTraces, CudaChartArray** pp_chartArray)
         static extern bool ChartArray_Init(int chartRows, int chartCols, int chartArrayWidth, int chartArrayHeight, int margin, int padding,
                                            int aggregateWidth, int aggregateHeight,
                                            UInt32 windowBkgColor, UInt32 chartBkgColor, UInt32 chartSelectedColor, UInt32 chartFrameColor, UInt32 chartAxisColor, UInt32 chartPlotColor,
-                                           int xmin, int xmax, int ymin, int ymax, int maxNumPoints, out IntPtr chartArray);
+                                           int xmin, int xmax, int ymin, int ymax, int maxNumPoints, int numTraces, out IntPtr chartArray);
 
 
         [HandleProcessCorruptedStateExceptions]
@@ -99,7 +99,7 @@ namespace CudaPlotNet
         public bool Init(int chartRows, int chartCols, int chartArrayWidth, int chartArrayHeight, int margin, int padding,
                         int aggregateWidth, int aggregateHeight,
                         Color windowBkgColor, Color chartBkgColor, Color chartSelectedColor, Color chartFrameColor, Color chartAxisColor, Color chartPlotColor,
-                        int xmin, int xmax, int ymin, int ymax, int maxNumPoints)
+                        int xmin, int xmax, int ymin, int ymax, int maxNumPoints, int numTraces)
         {
             bool initialized = false;
             chartArray = new IntPtr(0);
@@ -114,7 +114,7 @@ namespace CudaPlotNet
 
                 initialized = ChartArray_Init(chartRows,chartCols, chartArrayWidth, chartArrayHeight, margin,padding,
                     aggregateWidth,aggregateHeight,
-                    col1,col2,col3,col4,col5,col6,xmin,xmax,ymin,ymax,maxNumPoints, out chartArray);
+                    col1,col2,col3,col4,col5,col6,xmin,xmax,ymin,ymax,maxNumPoints,numTraces, out chartArray);
             }
             catch (Exception ex)
             {
@@ -320,10 +320,10 @@ namespace CudaPlotNet
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl, EntryPoint = "AppendData")]
-        //void AppendData(CudaChartArray* pChartArray, int* xArray, int* yArray, const int numPoints)
-        static extern void ChartArray_AppendData(IntPtr pChartArray, IntPtr xArray, IntPtr yArray, int numPoints);
+        // void AppendData(CudaChartArray* pChartArray, int* xArray, int* yArray, int numPoints, int traceNum)
+        static extern void ChartArray_AppendData(IntPtr pChartArray, IntPtr xArray, IntPtr yArray, int numPoints, int traceNum);
 
-        public void AppendData(int[] xVals, int[] yVals, ref WriteableBitmap bitmap)
+        public void AppendData(int[] xVals, int[] yVals, int traceNum, ref WriteableBitmap bitmap)
         {
 
             try
@@ -338,7 +338,7 @@ namespace CudaPlotNet
                 IntPtr ptr2 = pinnedArray2.AddrOfPinnedObject();
                 Marshal.Copy(yVals, 0, ptr2, yVals.Length);
 
-                ChartArray_AppendData(chartArray, ptr1, ptr2, xVals.Length);
+                ChartArray_AppendData(chartArray, ptr1, ptr2, xVals.Length, traceNum);
 
                 IntPtr ptr = ChartArray_GetChartImagePtr(chartArray);
 
@@ -364,7 +364,7 @@ namespace CudaPlotNet
         }
 
 
-        public void AppendData(int[] xVals, int[] yVals)
+        public void AppendData(int[] xVals, int[] yVals, int traceNum)
         {
             try
             {
@@ -378,7 +378,7 @@ namespace CudaPlotNet
                 IntPtr ptr2 = pinnedArray2.AddrOfPinnedObject();
                 Marshal.Copy(yVals, 0, ptr2, yVals.Length);
 
-                ChartArray_AppendData(chartArray, ptr1, ptr2, xVals.Length);
+                ChartArray_AppendData(chartArray, ptr1, ptr2, xVals.Length, traceNum);
 
                 pinnedArray1.Free();
                 pinnedArray2.Free();
