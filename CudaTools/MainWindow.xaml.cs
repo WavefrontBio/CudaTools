@@ -33,12 +33,22 @@ namespace CudaTools
             m_vm = new MainWindow_ViewModel();
             DataContext = m_vm;
 
-            ChartArray.Init(16, 24, 1, 2, 10000, 1);  // NOTE: allocate for expected max number of points
+            ChartArray.Init(16, 24, 1, 2, 100000, 1);  // NOTE: allocate for expected max number of points
                                                       // ~ 120 Megabytes/trace of GPU memory required for every 10,000 points
+
+            ChartArray.SetDefaultChartRanges(WPFTools.MultiChartArray.SIGNAL_TYPE.RAW, 0, 10, 0, 10);
+            ChartArray.SetDefaultChartRanges(WPFTools.MultiChartArray.SIGNAL_TYPE.CONTROL_SUBTRACTION, 0, 20, 0, 20);
+            ChartArray.SetDefaultChartRanges(WPFTools.MultiChartArray.SIGNAL_TYPE.STATIC_RATIO, 0, 30, 0, 30);
+            ChartArray.SetDefaultChartRanges(WPFTools.MultiChartArray.SIGNAL_TYPE.DYNAMIC_RATIO, 0, 40, 0, 40);
+
+            ChartArray.SetTraceColor(WPFTools.MultiChartArray.SIGNAL_TYPE.RAW, 0, System.Windows.Media.Colors.Yellow);
+            ChartArray.SetTraceColor(WPFTools.MultiChartArray.SIGNAL_TYPE.CONTROL_SUBTRACTION, 0, System.Windows.Media.Colors.OrangeRed);
+            ChartArray.SetTraceColor(WPFTools.MultiChartArray.SIGNAL_TYPE.STATIC_RATIO, 0, System.Windows.Media.Colors.CornflowerBlue);
+            ChartArray.SetTraceColor(WPFTools.MultiChartArray.SIGNAL_TYPE.DYNAMIC_RATIO, 0, System.Windows.Media.Colors.LawnGreen);
 
             m_duration = 0;
 
-            m_dummyDataSize = 15000;
+            m_dummyDataSize = 50000;
             m_dummyData = new int[m_dummyDataSize];
 
             for(int i = 0; i<m_dummyDataSize; i++)
@@ -149,7 +159,7 @@ namespace CudaTools
             m_sw = new Stopwatch();
             m_sw.Start();
 
-            Task task = Task.Run(() => BackgroundTask(1000, 5));            
+            Task task = Task.Run(() => BackgroundTask(20000, 2));            
         }
 
         private void ResetPB_Click(object sender, RoutedEventArgs e)

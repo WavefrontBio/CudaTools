@@ -36,7 +36,7 @@ public:
 	bool AllocateForAggregateImage();
 
 	void SetSelected();
-	void SetPlotColor(uchar4 color);
+	void SetTraceColor(int traceNum, uchar4 color);
 	void CalcConversionFactors();
 
 	void AppendData(int2 *p_new_points, int traceNum);
@@ -47,7 +47,7 @@ public:
 	uchar4* GetChartImagePtr();
 
 	void SetWindowBackground(uchar4 color);
-	void SetRanges(int xmin, int xmax, int ymin, int ymax);
+	void SetInitialRanges(int xmin, int xmax, int ymin, int ymax);
 	
 	void RedrawAggregate();
 	void AppendLineAggregate();
@@ -77,7 +77,8 @@ public:
 	uchar4 m_chart_selected_color;
 	uchar4 m_chart_frame_color;
 	uchar4 m_chart_axis_color;
-	uchar4 m_chart_plot_color;
+
+	uchar4 m_trace_color[MAX_TRACES];
 
 	// pixel size of window that contains this array of charts
 	int32_t m_chartArray_width;

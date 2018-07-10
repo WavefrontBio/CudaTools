@@ -145,8 +145,6 @@ namespace WPFTools
 
 
             BuildChartArray();
-   
-            UpdateAggregateRange();
 
             m_refreshTimer = new DispatcherTimer();
             m_refreshTimer.Tick += M_refreshTimer_Tick;
@@ -272,6 +270,19 @@ namespace WPFTools
             //UpdateAggregateRange();
         }
 
+
+
+        public void SetDefaultChartRanges(SIGNAL_TYPE signal, int xmin, int xmax, int ymin, int ymax)
+        {
+            m_chartArrays[signal].SetIntialRanges(xmin, xmax, ymin, ymax);
+            m_guiPipeline.Post(Tuple.Create<int[], int[], SIGNAL_TYPE, int, COMMAND_TYPE>(null, null, signal, 0, COMMAND_TYPE.RESET));
+        }
+
+
+        public void SetTraceColor(SIGNAL_TYPE signal, int traceNum, Color color)
+        {
+            m_chartArrays[signal].SetTraceColor(traceNum, color);
+        }
 
 
         private void SetUpChartArrayButtons()

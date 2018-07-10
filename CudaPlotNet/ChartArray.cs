@@ -319,18 +319,18 @@ namespace CudaPlotNet
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl, EntryPoint = "SetPlotColor")]
-        // void SetPlotColor(CudaChartArray* pChartArray, uint32_t color)
-        static extern void ChartArray_SetPlotColor(IntPtr pChartArray, UInt32 color);
+        [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl, EntryPoint = "SetTraceColor")]
+        // void SetTraceColor(CudaChartArray* pChartArray, int traceNum, uint32_t color)
+        static extern void ChartArray_SetTraceColor(IntPtr pChartArray, int traceNum, UInt32 color);
 
 
-        public void SetPlotColor(Color color)
+        public void SetTraceColor(int traceNum, Color color)
         {
             try
             {
                 UInt32 col1 = ColorToUInt(color);
 
-                ChartArray_SetPlotColor(chartArray, col1);
+                ChartArray_SetTraceColor(chartArray, traceNum, col1);
             }
             catch (Exception ex)
             {
@@ -338,6 +338,30 @@ namespace CudaPlotNet
             }
         }
 
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl, EntryPoint = "SetInitialRanges")]
+        // void SetInitialRanges(CudaChartArray* pChartArray, int xmin, int xmax, int ymin, int ymax)
+        static extern void ChartArray_SetInitialRanges(IntPtr pChartArray, int xmin, int xmax, int ymin, int ymax);
+
+
+        public void SetIntialRanges(int xmin, int xmax, int ymin, int ymax)
+        {
+            try
+            {
+                ChartArray_SetInitialRanges(chartArray, xmin, xmax, ymin, ymax);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error: " + ex.Message, "Error Setting Chart Ranges", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+
+        
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////

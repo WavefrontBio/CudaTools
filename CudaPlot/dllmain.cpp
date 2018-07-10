@@ -96,10 +96,10 @@ DllExport void SetSelected(CudaChartArray* pChartArray)
 }
 
 
-DllExport void SetPlotColor(CudaChartArray* pChartArray, uint32_t color)
+DllExport void SetTraceColor(CudaChartArray* pChartArray, int traceNum, uint32_t color)
 {
 	uchar4 col1 = UInt32_to_uchar4(color);
-	pChartArray->SetPlotColor(col1);
+	pChartArray->SetTraceColor(traceNum, col1);
 }
 
 
@@ -162,9 +162,9 @@ DllExport void SetWindowBackground(CudaChartArray* pChartArray, uchar4 color)
 }
 
 
-DllExport void SetRanges(CudaChartArray* pChartArray, int xmin, int xmax, int ymin, int ymax)
+DllExport void SetInitialRanges(CudaChartArray* pChartArray, int xmin, int xmax, int ymin, int ymax)
 {
-	pChartArray->SetRanges(xmin, xmax, ymin, ymax);
+	pChartArray->SetInitialRanges(xmin, xmax, ymin, ymax);
 }
 
 

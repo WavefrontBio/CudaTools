@@ -11,7 +11,7 @@ CudaChartArray::CudaChartArray(int rows, int cols,
 	uchar4 chartFrameColor, uchar4 chartAxisColor, uchar4 chartPlotColor,
 	int2 xRange, int2 yRange, int maxNumDataPoints, int numTraces)
 {
-	m_threadsPerBlock = 32;
+	m_threadsPerBlock = 512;
 	if (numTraces > MAX_TRACES) numTraces = MAX_TRACES;
 
 	m_rows = rows;
@@ -31,7 +31,10 @@ CudaChartArray::CudaChartArray(int rows, int cols,
 	m_chart_selected_color = chartSelectedColor;
 	m_chart_frame_color = chartFrameColor;
 	m_chart_axis_color = chartAxisColor;
-	m_chart_plot_color = chartPlotColor;
+
+	// set default colors
+	for(int i = 0; i<m_numTraces; i++)
+		m_trace_color[i] = make_uchar4(0, 255, 255, 255);
 
 	m_chart_width = (m_chartArray_width - (2 * m_margin) - ((m_cols - 1)*m_padding)) / m_cols;
 	m_chart_height = (m_chartArray_height - (2 * m_margin) - ((m_rows - 1)*m_padding)) / m_rows;
@@ -180,7 +183,7 @@ __global__ void plotChart(int2* data, uchar4* output, int numPoints, int maxNumP
 
 	if (numPoints < 1) return;
 
-	int pointsPerThread = (numPoints / blockDim.x) + 1;
+	int pointsPerThread = (numPoints / blockDim.x) + 2;
 
 	
 	// get pixel coordinates within the entire plot array window of chart origin (lower left corner)
@@ -198,10 +201,10 @@ __global__ void plotChart(int2* data, uchar4* output, int numPoints, int maxNumP
 	int start = threadNum * pointsPerThread;
 	int end = start + pointsPerThread - 1;
 
-	if (numPoints > 100)
+	/*if (numPoints > 100)
 	{
 		threadNum = threadIdx.x;
-	}
+	}*/
 
 	if (start >= numPoints) return;
 	if (end >= numPoints) end = numPoints - 1;
@@ -445,7 +448,7 @@ __global__ void plotAggregateChart(int2* data, uchar4* output, int numPoints, in
 	if (!chartSelected) return;
 
 
-	int pointsPerThread = (numPoints / numThreads) + 1;
+	int pointsPerThread = (numPoints / numThreads) + 2;
 
 	// get pixel coordinates within the entire plot array window of chart origin (lower left corner)	
 	uint32_t chartOriginX = margin;
@@ -762,9 +765,10 @@ void CudaChartArray::SetSelected()
 	}
 }
 
-void CudaChartArray::SetPlotColor(uchar4 color)
+void CudaChartArray::SetTraceColor(int traceNum, uchar4 color)
 {
-	m_chart_plot_color = color;
+	if (traceNum > MAX_TRACES-1 || traceNum < 0) return;
+	m_trace_color[traceNum] = color;
 }
 
 void CudaChartArray::CalcConversionFactors()
@@ -847,7 +851,7 @@ void CudaChartArray::Redraw()
 		plotChart << <numBlocks1, threadsPerBlock1 >> > (mp_d_data[i], mp_d_chart_image, m_num_data_points[i], m_max_num_data_points, m_x_value_to_pixel, m_y_value_to_pixel,
 			m_chart_width, m_chart_height, m_chart_image_pitch,
 			m_x_min, m_x_max, m_y_min, m_y_max,
-			m_chart_plot_color, m_margin, m_padding);
+			m_trace_color[i], m_margin, m_padding);
 	}
 
 	// copy full chart array image to host
@@ -873,7 +877,7 @@ void CudaChartArray::AppendLine()
 		plotChart << <grid, block >> > (mp_d_data[i], mp_d_chart_image, m_num_data_points[i], m_max_num_data_points, m_x_value_to_pixel, m_y_value_to_pixel,
 			m_chart_width, m_chart_height, m_chart_image_pitch,
 			m_x_min, m_x_max, m_y_min, m_y_max,
-			m_chart_plot_color, m_margin, m_padding);
+			m_trace_color[i], m_margin, m_padding);
 	}
 
 	// copy full chart array image to host
@@ -896,14 +900,12 @@ void CudaChartArray::SetWindowBackground(uchar4 color)
 	m_window_background_color = color;
 }
 
-void CudaChartArray::SetRanges(int xmin, int xmax, int ymin, int ymax)
+void CudaChartArray::SetInitialRanges(int xmin, int xmax, int ymin, int ymax)
 {
-	m_x_min = xmin;
-	m_x_max = xmax;
-	m_y_min = ymin;
-	m_y_max = ymax;
-
-	CalcConversionFactors();
+	m_initial_xRange.x = xmin;
+	m_initial_xRange.y = xmax;
+	m_initial_yRange.x = ymin;
+	m_initial_yRange.y = ymax;
 }
 
 
@@ -985,7 +987,7 @@ void CudaChartArray::RedrawAggregate()
 			m_x_value_to_pixel_aggregate, m_y_value_to_pixel_aggregate,
 			m_aggregate_width, m_aggregate_height, m_aggregate_image_pitch,
 			m_x_min, m_x_max, m_y_min, m_y_max,
-			m_chart_plot_color, m_margin, mp_d_chart_selected);
+			m_trace_color[i], m_margin, mp_d_chart_selected);
 	}
 
 	// copy full aggregate image to host
@@ -1010,7 +1012,7 @@ void CudaChartArray::AppendLineAggregate()
 			m_x_value_to_pixel_aggregate, m_y_value_to_pixel_aggregate,
 			m_aggregate_width, m_aggregate_height, m_aggregate_image_pitch,
 			m_x_min, m_x_max, m_y_min, m_y_max,
-			m_chart_plot_color, m_margin, mp_d_chart_selected);
+			m_trace_color[i], m_margin, mp_d_chart_selected);
 	}
 
 	// copy full aggregate image to host
