@@ -55,7 +55,6 @@ namespace WPFTools
             SET_SELECTED
         }
 
-        Dictionary<SIGNAL_TYPE, Color> m_chartTraceColor;
 
         public event MultiChartArray_MessageEventHandler MessageEvent;
         protected virtual void OnMessage(MultiChartArrayEventArgs e)
@@ -102,6 +101,9 @@ namespace WPFTools
 
         public int m_totalPoints;
 
+       
+
+
         public MultiChartArray()
         {
             InitializeComponent();
@@ -111,19 +113,15 @@ namespace WPFTools
             m_uiTask = TaskScheduler.FromCurrentSynchronizationContext();
 
             m_tokenSource = new CancellationTokenSource();
-
-            m_chartTraceColor = new Dictionary<SIGNAL_TYPE, Color>() { {SIGNAL_TYPE.RAW,Colors.Yellow},
-                { SIGNAL_TYPE.CONTROL_SUBTRACTION, Colors.Red},
-                { SIGNAL_TYPE.STATIC_RATIO, Colors.Purple},
-                { SIGNAL_TYPE.DYNAMIC_RATIO, Colors.LightBlue} };
             
         }
 
 
-        public void Init(int rows, int cols, int margin, int padding, int maxNumPoints, int numTraces)
-        {          
+        public void Init(int rows, int cols, int margin, int padding, int maxNumPoints, List<MultiChartArray_TraceItem> traces)
+        {
+            int numTraces = traces.Count;
 
-            m_vm = new MultiChartArray_ViewModel(rows, cols, padding, margin, maxNumPoints, numTraces);
+            m_vm = new MultiChartArray_ViewModel(rows, cols, padding, margin, maxNumPoints, traces);
             DataContext = m_vm;
 
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -145,6 +143,7 @@ namespace WPFTools
 
 
             BuildChartArray();
+            SetupVisiblityCheckBoxes(m_vm.traces);
 
             m_refreshTimer = new DispatcherTimer();
             m_refreshTimer.Tick += M_refreshTimer_Tick;
@@ -157,22 +156,22 @@ namespace WPFTools
             
         }
         
-        public void AppendData(int[] x, int[] y, SIGNAL_TYPE signal, int traceNum)
-        {           
+        public void AppendData(int[] x, int[] y, SIGNAL_TYPE signal, int id)
+        {
             // add data to chart array (the x array is superfluous since it contains all the same values, should just be an int, not int[])
             //m_chartArrays[signal].AppendData(x, y);
-            m_dataPipeline.Post(Tuple.Create<int[], int[], SIGNAL_TYPE, int>(x, y, signal, traceNum));
-            m_newDataAdded = true;
+            if (m_vm.traces.ContainsKey(id))
+            {
+                m_dataPipeline.Post(Tuple.Create<int[], int[], SIGNAL_TYPE, int>(x, y, signal, m_vm.traces[id].traceNum));
+                m_newDataAdded = true;
+            }
         }
 
 
         public void Refresh()
-        {
-            if (m_newDataAdded)
-            {
+        {  
+            if(m_guiPipeline != null)         
                 m_guiPipeline.Post(Tuple.Create<int[], int[], SIGNAL_TYPE, int, COMMAND_TYPE>(null, null, m_visibleSignal, 0, COMMAND_TYPE.REFRESH));
-                m_newDataAdded = false;
-            }
         }
 
 
@@ -220,7 +219,7 @@ namespace WPFTools
                 m_chartArrays[signal].Init(m_vm.rows, m_vm.cols, m_vm.chartArrayWidth, m_vm.chartArrayHeight, m_vm.margin, m_vm.padding,
                        m_vm.aggregateWidth, m_vm.aggregateHeight,
                        Colors.DarkBlue, Colors.Black, Color.FromArgb(255, 85, 85, 85), Colors.Black, Colors.White,
-                       m_chartTraceColor[signal],
+                       Colors.Yellow,
                        0, initialXmax, 0, initialYmax, m_vm.maxPoints, m_vm.numTraces);
                 m_chartArrays[signal].Redraw();
                 m_chartArrays[signal].RedrawAggregate();
@@ -246,28 +245,7 @@ namespace WPFTools
 
         public void Reset()
         {
-            m_guiPipeline.Post(Tuple.Create<int[], int[], SIGNAL_TYPE, int, COMMAND_TYPE>(null, null, m_visibleSignal, 0, COMMAND_TYPE.RESET));
-
-            // clears data from all charts
-            //foreach (int value in Enum.GetValues(typeof(SIGNAL_TYPE)))
-            //{
-            //    SIGNAL_TYPE signal = (SIGNAL_TYPE)value;
-            //    m_chartArrays[signal].Reset();
-
-            //    if (signal == m_visibleSignal)
-            //    {
-            //        m_chartArrays[signal].Redraw();
-            //        m_chartArrays[signal].RedrawAggregate();
-            //    }
-            //}
-
-            //WriteableBitmap bmap = m_vm.bitmap;
-            //m_chartArrays[m_visibleSignal].Refresh(ref bmap);
-
-            //WriteableBitmap aggregateBitmapRef = m_vm.aggregateBitmap;
-            //m_chartArrays[m_visibleSignal].RefreshAggregate(ref aggregateBitmapRef);
-
-            //UpdateAggregateRange();
+            m_guiPipeline.Post(Tuple.Create<int[], int[], SIGNAL_TYPE, int, COMMAND_TYPE>(null, null, m_visibleSignal, 0, COMMAND_TYPE.RESET));    
         }
 
 
@@ -282,6 +260,113 @@ namespace WPFTools
         public void SetTraceColor(SIGNAL_TYPE signal, int traceNum, Color color)
         {
             m_chartArrays[signal].SetTraceColor(traceNum, color);
+
+            // find trace id from the given signal and traceNum
+            foreach(KeyValuePair<int,MultiChartArray_TraceItem> item in m_vm.traces)
+            {
+                if(item.Value.traceNum == traceNum)
+                {
+                    int id = item.Value.id;
+                    m_vm.traceColors[Tuple.Create<int, SIGNAL_TYPE>(id, signal)] = color;
+                    break;
+                }
+            }
+
+            UpdateTraceColorLegend(); 
+        }
+
+
+        public void SetTraceVisibility(SIGNAL_TYPE signal, int traceNum, bool isVisible)
+        {
+            m_chartArrays[signal].SetTraceVisibility(traceNum, isVisible);
+        }
+
+        private void SetupVisiblityCheckBoxes(Dictionary<int, MultiChartArray_TraceItem> traces)
+        {
+            foreach(KeyValuePair<int,MultiChartArray_TraceItem> item in traces)
+            {
+                StackPanel sp = new StackPanel();
+                sp.Margin = new Thickness(10, 2, 10, 2);
+                sp.Tag = item.Value.id;
+                sp.Orientation = Orientation.Horizontal;
+
+                CheckBox cb = new CheckBox();
+                cb.Content = item.Value.name;
+                cb.Tag = item.Value.id;
+                cb.Margin = new Thickness(0, 2, 0, 2);
+                cb.Checked += VisibilityCB_CheckChanged;
+                cb.Unchecked += VisibilityCB_CheckChanged;
+                cb.IsChecked = true;
+                sp.Children.Add(cb);
+
+                Rectangle rect = new Rectangle();
+                rect.Tag = item.Value.id;
+                rect.Width = 10;
+                rect.Height = 4;
+                rect.Fill = new SolidColorBrush(Colors.Yellow);
+                rect.Margin = new Thickness(4, 0, 0, 0);                
+                sp.Children.Add(rect);
+
+                VisibilityStackPanel.Children.Add(sp);
+            }
+        }
+
+
+
+
+        private void UpdateTraceColorLegend()
+        {
+            SIGNAL_TYPE signal = m_visibleSignal;
+                        
+            foreach (KeyValuePair<int, MultiChartArray_TraceItem> item in m_vm.traces)
+            {
+                int id = item.Value.id;
+                Color color = m_vm.traceColors[Tuple.Create<int, SIGNAL_TYPE>(id, signal)];
+
+                // find the visibility checkbox stackpanel with this id
+                foreach(UIElement child1 in VisibilityStackPanel.Children)
+                {
+                    if(child1.GetType() == typeof(StackPanel))
+                    {
+                        StackPanel stackpanel = (StackPanel)child1;
+                        foreach (UIElement child2 in stackpanel.Children)
+                        {
+                            if (child2.GetType() == typeof(Rectangle))
+                            {
+                                Rectangle rect = (Rectangle)child2;
+                                if ((int)rect.Tag == id)
+                                {
+                                    rect.Fill = new SolidColorBrush(color);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+
+        private void VisibilityCB_CheckChanged(object sender, RoutedEventArgs e)
+        {
+            if(e.Source.GetType() == typeof(CheckBox))
+            {
+                CheckBox cb = (CheckBox)e.Source;
+                int id = (int)cb.Tag;
+
+                foreach(KeyValuePair<int, MultiChartArray_TraceItem> item in m_vm.traces)
+                {
+                    if(item.Value.id == id)
+                    {
+                        SetTraceVisibility(SIGNAL_TYPE.RAW, item.Value.traceNum, (bool)cb.IsChecked);
+                        SetTraceVisibility(SIGNAL_TYPE.CONTROL_SUBTRACTION, item.Value.traceNum, (bool)cb.IsChecked);
+                        SetTraceVisibility(SIGNAL_TYPE.STATIC_RATIO, item.Value.traceNum, (bool)cb.IsChecked);
+                        SetTraceVisibility(SIGNAL_TYPE.DYNAMIC_RATIO, item.Value.traceNum, (bool)cb.IsChecked);
+                        Refresh();
+                        break;
+                    }
+                }
+            }
         }
 
 
@@ -315,7 +400,7 @@ namespace WPFTools
                 button.Tag = tag;
                
                 TextBlock tb = new TextBlock();
-                tb.FontSize = fontSize;               
+                tb.FontSize = fontSize;                            
                 tb.Text = (i + 1).ToString();
                 button.Content = tb;
                
@@ -651,11 +736,8 @@ namespace WPFTools
                     y2 = (int)(m_dragDown.Y);
                 }
 
-
                 m_vm.overlay.DrawRectangle(x1, y1, x2, y2, Colors.Red);
                 m_vm.overlay.DrawRectangle(x1 + 1, y1 + 1, x2 - 1, y2 - 1, Colors.Red);
-
-
             }
         }
 
@@ -686,35 +768,12 @@ namespace WPFTools
 
         private void M_refreshTimer_Tick(object sender, EventArgs e)
         {
-            Refresh();         
+            if (m_newDataAdded)
+            {
+                m_guiPipeline.Post(Tuple.Create<int[], int[], SIGNAL_TYPE, int, COMMAND_TYPE>(null, null, m_visibleSignal, 0, COMMAND_TYPE.REFRESH));
+                m_newDataAdded = false;
+            }
         }
-
-
-        //public void Resize()
-        //{
-        //    int w = 0, h = 0, pw = 0, ph = 0;
-        //    m_vm.OptimizeBitmapSize((int)imageBitmap.ActualWidth*2, (int)imageBitmap.ActualHeight*2, ref w, ref h, ref pw, ref ph);
-
-        //    if (w != m_vm.chartArrayWidth || h != m_vm.chartArrayHeight)
-        //    {
-        //        m_vm.chartArrayWidth = w;
-        //        m_vm.chartArrayHeight = h;
-        //        m_vm.aggregateWidth = (int)AggregateImage.ActualWidth*2;
-        //        m_vm.aggregateHeight = (int)AggregateImage.ActualHeight*2;
-
-        //        m_vm.bitmap = BitmapFactory.New(m_vm.chartArrayWidth, m_vm.chartArrayHeight);
-        //        m_vm.overlay = BitmapFactory.New(m_vm.chartArrayWidth, m_vm.chartArrayHeight);
-        //        m_vm.aggregateBitmap = BitmapFactory.New(m_vm.aggregateWidth, m_vm.aggregateHeight);
-
-        //        foreach (int value in Enum.GetValues(typeof(SIGNAL_TYPE)))
-        //        {
-        //            SIGNAL_TYPE signal = (SIGNAL_TYPE)value;
-        //            m_chartArrays[signal].Resize(m_vm.chartArrayWidth, m_vm.chartArrayHeight, m_vm.aggregateWidth, m_vm.aggregateHeight);
-        //        }
-
-        //        Refresh();
-        //    }
-        //}
 
         public void GetBestBitmapSize(ref int width, ref int height, ref int chartPanelWidth, ref int chartPanelHeight)
         {
@@ -730,21 +789,6 @@ namespace WPFTools
         public void UpdateSelectedCharts()
         {
             m_guiPipeline.Post(Tuple.Create<int[], int[], SIGNAL_TYPE, int, COMMAND_TYPE>(null, null, m_visibleSignal, 0, COMMAND_TYPE.SET_SELECTED));
-
-            //// have to convert to a 1D bool array, because that's what is needed by the C++ function
-            //bool[] temp = new bool[m_vm.rows * m_vm.cols];
-            //for (int r = 0; r < m_vm.rows; r++)
-            //    for (int c = 0; c < m_vm.cols; c++)
-            //    {
-            //        temp[r * m_vm.cols + c] = m_chartSelected[r, c];
-            //    }
-
-            //WriteableBitmap bitmapRef = m_vm.bitmap;
-            //m_chartArrays[m_visibleSignal].SetSelectedCharts(temp, ref bitmapRef);
-
-            //WriteableBitmap aggregateBitmapRef = m_vm.aggregateBitmap;
-            //m_chartArrays[m_visibleSignal].RedrawAggregate();
-            //m_chartArrays[m_visibleSignal].RefreshAggregate(ref aggregateBitmapRef);
         }
 
 
@@ -760,33 +804,29 @@ namespace WPFTools
             {
                 case "Raw":
                     m_visibleSignal = SIGNAL_TYPE.RAW;
+                    AggregateHeaderText.Text = "Raw";
                     break;
                 case "StaticRatio":
                     m_visibleSignal = SIGNAL_TYPE.STATIC_RATIO;
+                    AggregateHeaderText.Text = "Static Ratio";
                     break;
                 case "ControlSubtraction":
                     m_visibleSignal = SIGNAL_TYPE.CONTROL_SUBTRACTION;
+                    AggregateHeaderText.Text = "Control Subtraction";
                     break;
                 case "DynamicRatio":
                     m_visibleSignal = SIGNAL_TYPE.DYNAMIC_RATIO;
+                    AggregateHeaderText.Text = "Dynamic Ratio";
                     break;
                 default:
                     m_visibleSignal = SIGNAL_TYPE.RAW;
+                    AggregateHeaderText.Text = "Raw";
                     break;
             }
-
-            //WriteableBitmap bitmapRef = m_vm.bitmap;
-            //UpdateSelectedCharts();
-            //m_chartArrays[m_visibleSignal].Refresh(ref bitmapRef);
-
-            //WriteableBitmap aggregateBitmapRef = m_vm.aggregateBitmap;
-            //m_chartArrays[m_visibleSignal].RedrawAggregate();
-            //m_chartArrays[m_visibleSignal].RefreshAggregate(ref aggregateBitmapRef);
-
-            //// update the range labels
-            //UpdateAggregateRange();
    
             m_guiPipeline.Post(Tuple.Create<int[], int[], SIGNAL_TYPE, int, COMMAND_TYPE>(null, null, m_visibleSignal, 0, COMMAND_TYPE.REFRESH));
+
+            UpdateTraceColorLegend();
 
         }
 
@@ -1037,6 +1077,21 @@ namespace WPFTools
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
+    public class MultiChartArray_TraceItem
+    {
+        public string name;
+        public int traceNum;
+        public int id;
+
+        public MultiChartArray_TraceItem(string Name, int TraceNum, int ID)
+        {
+            name = Name;
+            traceNum = TraceNum;
+            id = ID;            
+        }
+    }
+
+
 
     public class MultiChartArray_ViewModel : INotifyPropertyChanged
         {
@@ -1059,6 +1114,20 @@ namespace WPFTools
             {
                 get { return _numTraces; }
                 set { _numTraces = value; OnPropertyChanged(new PropertyChangedEventArgs("numTraces")); }
+            }
+
+            private Dictionary<int, MultiChartArray_TraceItem> _traces;
+            public Dictionary<int, MultiChartArray_TraceItem> traces
+            {
+                get { return _traces; }
+                set { _traces = value; OnPropertyChanged(new PropertyChangedEventArgs("_traces")); }
+            }
+
+            private Dictionary<Tuple<int, MultiChartArray.SIGNAL_TYPE>, Color> _traceColors;
+            public Dictionary<Tuple<int, MultiChartArray.SIGNAL_TYPE>, Color> traceColors
+            {
+                get { return _traceColors; }
+                set { _traceColors = value; OnPropertyChanged(new PropertyChangedEventArgs("_traceColors")); }
             }
 
             private int _maxPoints;
@@ -1236,7 +1305,7 @@ namespace WPFTools
             }
 
 
-            public MultiChartArray_ViewModel(int Rows, int Cols, int Padding, int Margin, int MaxPoints, int NumTraces)
+            public MultiChartArray_ViewModel(int Rows, int Cols, int Padding, int Margin, int MaxPoints, List<MultiChartArray_TraceItem> Traces)
             {
                 chartArrayWidth = 0;
                 chartArrayHeight = 0;
@@ -1246,7 +1315,27 @@ namespace WPFTools
                 padding = Padding;
                 margin = Margin;
                 maxPoints = MaxPoints;
-                numTraces = NumTraces;
+                numTraces = Traces.Count;
+
+                // initialize traces and trace colors
+                int traceNum = 0;
+                traces = new Dictionary<int, MultiChartArray_TraceItem>();
+                traceColors = new Dictionary<Tuple<int, MultiChartArray.SIGNAL_TYPE>, Color>();
+                foreach (MultiChartArray_TraceItem item in Traces)
+                {
+                    item.traceNum = traceNum;
+                    traces.Add(item.id, item);
+                    traceNum++;
+
+                    // initialize trace colors                    
+                    foreach (int value in Enum.GetValues(typeof(MultiChartArray.SIGNAL_TYPE)))
+                    {
+                        MultiChartArray.SIGNAL_TYPE signal = (MultiChartArray.SIGNAL_TYPE)value;
+                        traceColors.Add(Tuple.Create<int, MultiChartArray.SIGNAL_TYPE>(item.id, signal), Colors.Yellow);  // default to yellow
+                    }
+                }
+
+                
 
                 int pixelsPerChart = 42;
 

@@ -27,11 +27,18 @@
             
             <Grid Grid.Row="0" Grid.Column="3" Grid.RowSpan="3">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <Grid Grid.Row="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Grid Grid.Row="0" Background="LightBlue">
+                    <TextBlock Text="Raw" x:Name="AggregateHeaderText" FontSize="16"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Grid>
+
+                <Grid Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                     <Image x:Name="AggregateImage" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Stretch="Fill"
                         Source="{Binding aggregateBitmap}"
                            SizeChanged="AggregateImage_SizeChanged"/>
@@ -39,14 +46,21 @@
                                FontSize="10" FontStyle="Italic" FontWeight="Light" Margin="5,0,0,0"
                                Text="{Binding yMaxText}" Foreground="White" Background="Transparent" Panel.ZIndex="10"/>
                     <TextBlock x:Name="YMinText" HorizontalAlignment="Left" VerticalAlignment="Bottom" 
-                               FontSize="10" FontStyle="Italic" FontWeight="Light" Margin="5,0,0,0"
+                               FontSize="10" FontStyle="Italic" FontWeight="Light" Margin="5,0,0,0" 
                                Text="{Binding yMinText}" Foreground="White" Background="Transparent" Panel.ZIndex="10"/>
                     <TextBlock x:Name="XMaxText" HorizontalAlignment="Right" VerticalAlignment="Bottom" 
                                FontSize="10" FontStyle="Italic" FontWeight="Light" Margin="0,0,5,0"
                                Text="{Binding xMaxText}" Foreground="White" Background="Transparent" Panel.ZIndex="10"/>
                 </Grid>
 
-                <Grid x:Name="ImageDisplayGrid" Grid.Row="1">
+                <Grid Grid.Row="2" Background="LightBlue">
+                    <ScrollViewer VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto">
+                        <StackPanel Orientation="Horizontal" x:Name="VisibilityStackPanel">                          
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>                     
+
+                <Grid x:Name="ImageDisplayGrid" Grid.Row="3">
                     <local:ImageDisplay HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
                 </Grid>
 

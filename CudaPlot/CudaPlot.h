@@ -29,6 +29,7 @@ public:
 	int2 GetChartArrayPixelSize();
 
 	int GetMaxNumberOfTraces();
+	void SetTraceVisibility(int traceNum, bool isVisible);
 	
 	bool AllocateForData(int numDataPoints);
 	bool AllocateForSelected();

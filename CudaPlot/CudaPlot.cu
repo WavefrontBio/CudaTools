@@ -11,7 +11,7 @@ CudaChartArray::CudaChartArray(int rows, int cols,
 	uchar4 chartFrameColor, uchar4 chartAxisColor, uchar4 chartPlotColor,
 	int2 xRange, int2 yRange, int maxNumDataPoints, int numTraces)
 {
-	m_threadsPerBlock = 512;
+	m_threadsPerBlock = 512;  // how many threads allocated for drawing each chart
 	if (numTraces > MAX_TRACES) numTraces = MAX_TRACES;
 
 	m_rows = rows;
@@ -654,6 +654,13 @@ int CudaChartArray::GetMaxNumberOfTraces()
 	return MAX_TRACES;
 }
 
+void CudaChartArray::SetTraceVisibility(int traceNum, bool isVisible)
+{
+	if (traceNum > m_numTraces - 1 || traceNum < 0) return;
+	m_traceVisible[traceNum] = isVisible;
+}
+
+
 int2 CudaChartArray::GetChartArrayPixelSize()
 {
 	return make_int2(m_chartArray_width, m_chartArray_height);
@@ -848,10 +855,12 @@ void CudaChartArray::Redraw()
 	// redraw chart
 	for (int i = 0; i < m_numTraces; i++)
 	{
-		plotChart << <numBlocks1, threadsPerBlock1 >> > (mp_d_data[i], mp_d_chart_image, m_num_data_points[i], m_max_num_data_points, m_x_value_to_pixel, m_y_value_to_pixel,
-			m_chart_width, m_chart_height, m_chart_image_pitch,
-			m_x_min, m_x_max, m_y_min, m_y_max,
-			m_trace_color[i], m_margin, m_padding);
+		if(m_traceVisible[i])
+			plotChart << <numBlocks1, threadsPerBlock1 >> > (mp_d_data[i], mp_d_chart_image, m_num_data_points[i], 
+				m_max_num_data_points, m_x_value_to_pixel, m_y_value_to_pixel,
+				m_chart_width, m_chart_height, m_chart_image_pitch,
+				m_x_min, m_x_max, m_y_min, m_y_max,
+				m_trace_color[i], m_margin, m_padding);
 	}
 
 	// copy full chart array image to host
@@ -874,10 +883,12 @@ void CudaChartArray::AppendLine()
 
 	for (int i = 0; i < m_numTraces; i++)
 	{
-		plotChart << <grid, block >> > (mp_d_data[i], mp_d_chart_image, m_num_data_points[i], m_max_num_data_points, m_x_value_to_pixel, m_y_value_to_pixel,
-			m_chart_width, m_chart_height, m_chart_image_pitch,
-			m_x_min, m_x_max, m_y_min, m_y_max,
-			m_trace_color[i], m_margin, m_padding);
+		if (m_traceVisible[i])
+			plotChart << <grid, block >> > (mp_d_data[i], mp_d_chart_image, m_num_data_points[i], 
+				m_max_num_data_points, m_x_value_to_pixel, m_y_value_to_pixel,
+				m_chart_width, m_chart_height, m_chart_image_pitch,
+				m_x_min, m_x_max, m_y_min, m_y_max,
+				m_trace_color[i], m_margin, m_padding);
 	}
 
 	// copy full chart array image to host
@@ -983,11 +994,13 @@ void CudaChartArray::RedrawAggregate()
 	// redraw chart
 	for (int i = 0; i < m_numTraces; i++)
 	{
-		plotAggregateChart << <numBlocks1, threadsPerBlock1 >> > (mp_d_data[i], mp_d_aggregate_image, m_num_data_points[i], m_max_num_data_points,
-			m_x_value_to_pixel_aggregate, m_y_value_to_pixel_aggregate,
-			m_aggregate_width, m_aggregate_height, m_aggregate_image_pitch,
-			m_x_min, m_x_max, m_y_min, m_y_max,
-			m_trace_color[i], m_margin, mp_d_chart_selected);
+		if (m_traceVisible[i])
+			plotAggregateChart << <numBlocks1, threadsPerBlock1 >> > (mp_d_data[i], mp_d_aggregate_image, 
+				m_num_data_points[i], m_max_num_data_points,
+				m_x_value_to_pixel_aggregate, m_y_value_to_pixel_aggregate,
+				m_aggregate_width, m_aggregate_height, m_aggregate_image_pitch,
+				m_x_min, m_x_max, m_y_min, m_y_max,
+				m_trace_color[i], m_margin, mp_d_chart_selected);
 	}
 
 	// copy full aggregate image to host
@@ -1008,11 +1021,13 @@ void CudaChartArray::AppendLineAggregate()
 	for (int i = 0; i < m_numTraces; i++)
 	{
 		// redraw chart
-		plotAggregateChart << <numBlocks1, threadsPerBlock1 >> > (mp_d_data[i], mp_d_aggregate_image, m_num_data_points[i], m_max_num_data_points,
-			m_x_value_to_pixel_aggregate, m_y_value_to_pixel_aggregate,
-			m_aggregate_width, m_aggregate_height, m_aggregate_image_pitch,
-			m_x_min, m_x_max, m_y_min, m_y_max,
-			m_trace_color[i], m_margin, mp_d_chart_selected);
+		if (m_traceVisible[i])
+			plotAggregateChart << <numBlocks1, threadsPerBlock1 >> > (mp_d_data[i], mp_d_aggregate_image, 
+				m_num_data_points[i], m_max_num_data_points,
+				m_x_value_to_pixel_aggregate, m_y_value_to_pixel_aggregate,
+				m_aggregate_width, m_aggregate_height, m_aggregate_image_pitch,
+				m_x_min, m_x_max, m_y_min, m_y_max,
+				m_trace_color[i], m_margin, mp_d_chart_selected);
 	}
 
 	// copy full aggregate image to host

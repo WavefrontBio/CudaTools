@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Collections.Generic;
 
 namespace CudaTools
 {
@@ -33,8 +34,13 @@ namespace CudaTools
             m_vm = new MainWindow_ViewModel();
             DataContext = m_vm;
 
-            ChartArray.Init(16, 24, 1, 2, 100000, 1);  // NOTE: allocate for expected max number of points
-                                                      // ~ 120 Megabytes/trace of GPU memory required for every 10,000 points
+
+            List<WPFTools.MultiChartArray_TraceItem> traces = new List<WPFTools.MultiChartArray_TraceItem>();
+            traces.Add(new WPFTools.MultiChartArray_TraceItem("Indicator 1", 0, 100));
+            traces.Add(new WPFTools.MultiChartArray_TraceItem("Indicator 2", 1, 200));
+
+            ChartArray.Init(16, 24, 1, 3, 100000, traces);  // NOTE: allocate for expected max number of points
+                                                            // ~ 120 Megabytes/trace of GPU memory required for every 10,000 points
 
             ChartArray.SetDefaultChartRanges(WPFTools.MultiChartArray.SIGNAL_TYPE.RAW, 0, 10, 0, 10);
             ChartArray.SetDefaultChartRanges(WPFTools.MultiChartArray.SIGNAL_TYPE.CONTROL_SUBTRACTION, 0, 20, 0, 20);
@@ -45,6 +51,11 @@ namespace CudaTools
             ChartArray.SetTraceColor(WPFTools.MultiChartArray.SIGNAL_TYPE.CONTROL_SUBTRACTION, 0, System.Windows.Media.Colors.OrangeRed);
             ChartArray.SetTraceColor(WPFTools.MultiChartArray.SIGNAL_TYPE.STATIC_RATIO, 0, System.Windows.Media.Colors.CornflowerBlue);
             ChartArray.SetTraceColor(WPFTools.MultiChartArray.SIGNAL_TYPE.DYNAMIC_RATIO, 0, System.Windows.Media.Colors.LawnGreen);
+
+            ChartArray.SetTraceColor(WPFTools.MultiChartArray.SIGNAL_TYPE.RAW, 1, System.Windows.Media.Colors.Purple);
+            ChartArray.SetTraceColor(WPFTools.MultiChartArray.SIGNAL_TYPE.CONTROL_SUBTRACTION, 1, System.Windows.Media.Colors.Plum);
+            ChartArray.SetTraceColor(WPFTools.MultiChartArray.SIGNAL_TYPE.STATIC_RATIO, 1, System.Windows.Media.Colors.LimeGreen);
+            ChartArray.SetTraceColor(WPFTools.MultiChartArray.SIGNAL_TYPE.DYNAMIC_RATIO, 1, System.Windows.Media.Colors.Goldenrod);
 
             m_duration = 0;
 
@@ -118,17 +129,17 @@ namespace CudaTools
 
                 if (flip)
                 {
-                    ChartArray.AppendData(x, y1, WPFTools.MultiChartArray.SIGNAL_TYPE.RAW, 0);
-                    ChartArray.AppendData(x, y2, WPFTools.MultiChartArray.SIGNAL_TYPE.CONTROL_SUBTRACTION, 0);
-                    ChartArray.AppendData(x, y3, WPFTools.MultiChartArray.SIGNAL_TYPE.STATIC_RATIO, 0);
-                    ChartArray.AppendData(x, y4, WPFTools.MultiChartArray.SIGNAL_TYPE.DYNAMIC_RATIO, 0);
+                    ChartArray.AppendData(x, y1, WPFTools.MultiChartArray.SIGNAL_TYPE.RAW, 100);
+                    ChartArray.AppendData(x, y2, WPFTools.MultiChartArray.SIGNAL_TYPE.CONTROL_SUBTRACTION, 100);
+                    ChartArray.AppendData(x, y3, WPFTools.MultiChartArray.SIGNAL_TYPE.STATIC_RATIO, 100);
+                    ChartArray.AppendData(x, y4, WPFTools.MultiChartArray.SIGNAL_TYPE.DYNAMIC_RATIO, 100);
                 }
                 else
                 {
-                    ChartArray.AppendData(x, y5, WPFTools.MultiChartArray.SIGNAL_TYPE.RAW, 1);
-                    ChartArray.AppendData(x, y6, WPFTools.MultiChartArray.SIGNAL_TYPE.CONTROL_SUBTRACTION, 1);
-                    ChartArray.AppendData(x, y7, WPFTools.MultiChartArray.SIGNAL_TYPE.STATIC_RATIO, 1);
-                    ChartArray.AppendData(x, y8, WPFTools.MultiChartArray.SIGNAL_TYPE.DYNAMIC_RATIO, 1);
+                    ChartArray.AppendData(x, y5, WPFTools.MultiChartArray.SIGNAL_TYPE.RAW, 200);
+                    ChartArray.AppendData(x, y6, WPFTools.MultiChartArray.SIGNAL_TYPE.CONTROL_SUBTRACTION, 200);
+                    ChartArray.AppendData(x, y7, WPFTools.MultiChartArray.SIGNAL_TYPE.STATIC_RATIO, 200);
+                    ChartArray.AppendData(x, y8, WPFTools.MultiChartArray.SIGNAL_TYPE.DYNAMIC_RATIO, 200);
                 }
 
                 flip = !flip;
@@ -159,7 +170,7 @@ namespace CudaTools
             m_sw = new Stopwatch();
             m_sw.Start();
 
-            Task task = Task.Run(() => BackgroundTask(20000, 2));            
+            Task task = Task.Run(() => BackgroundTask(1000, 10));            
         }
 
         private void ResetPB_Click(object sender, RoutedEventArgs e)
@@ -173,9 +184,13 @@ namespace CudaTools
 
         }
 
+        bool visible = true;
         private void TestPB_Click(object sender, RoutedEventArgs e)
         {
             //Task.Run(() => TestRoutine());
+
+            visible = !visible;
+            ChartArray.SetTraceVisibility(WPFTools.MultiChartArray.SIGNAL_TYPE.RAW, 1, visible);
 
             ChartArray.Refresh();
             //ChartArray.Resize();
@@ -187,6 +202,7 @@ namespace CudaTools
         }
 
 
+        
         private void TestRoutine()
         {
             int loopCount = 0;

@@ -102,6 +102,12 @@ DllExport void SetTraceColor(CudaChartArray* pChartArray, int traceNum, uint32_t
 	pChartArray->SetTraceColor(traceNum, col1);
 }
 
+DllExport void SetTraceVisibility(CudaChartArray* pChartArray, int traceNum, bool isVisible)
+{	
+	pChartArray->SetTraceVisibility(traceNum, isVisible);
+}
+
+
 
 DllExport void AppendData(CudaChartArray* pChartArray, int* xArray, int* yArray, int numPoints, int traceNum)
 {	
